@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Header from './components/Header'
 import SystemDiagnostics from './components/SystemDiagnostics'
 import EarthMonitor from './components/EarthMonitor'
@@ -11,6 +11,20 @@ import './App.css'
 
 export default function App() {
   const [threatLevel, setThreatLevel] = useState('MINIMAL')
+
+  useEffect(() => {
+    function handleKey(e) {
+      if (e.key === 'f' || e.key === 'F') {
+        if (!document.fullscreenElement) {
+          document.documentElement.requestFullscreen()
+        } else {
+          document.exitFullscreen()
+        }
+      }
+    }
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
+  }, [])
 
   return (
     <div className="teletraan">
