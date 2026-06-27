@@ -1,4 +1,18 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
+
+const THREAT_LEVELS = [
+  { level: 'MINIMAL', color: '#00d4ff', bgColor: 'rgba(0, 212, 255, 0.08)', index: 0 },
+  { level: 'ELEVATED', color: '#ff6b00', bgColor: 'rgba(255, 107, 0, 0.08)', index: 1 },
+  { level: 'HIGH', color: '#ff4400', bgColor: 'rgba(255, 68, 0, 0.12)', index: 2 },
+  { level: 'CRITICAL', color: '#ff0000', bgColor: 'rgba(255, 0, 0, 0.15)', index: 3 },
+]
+
+const THREAT_MESSAGES = {
+  MINIMAL: 'No Decepticon signatures detected.',
+  ELEVATED: 'Unidentified energy signatures — monitoring.',
+  HIGH: 'Decepticon movement detected — Autobots on standby.',
+  CRITICAL: 'DECEPTICON ATTACK IMMINENT — ALL UNITS SCRAMBLE.',
+}
 
 function Bar({ label, value, max = 100, color = 'amber' }) {
   const pct = Math.min(100, (value / max) * 100)
@@ -6,10 +20,7 @@ function Bar({ label, value, max = 100, color = 'amber' }) {
     <div className="diag-bar-row">
       <span className="diag-label">{label}</span>
       <div className="diag-bar-track">
-        <div
-          className={`diag-bar-fill ${color}`}
-          style={{ width: `${pct}%` }}
-        />
+        <div className={`diag-bar-fill ${color}`} style={{ width: `${pct}%` }} />
         <div className="diag-bar-scan" />
       </div>
       <span className={`diag-value ${color}`}>{value.toFixed(1)}%</span>
@@ -22,7 +33,6 @@ function Sparkline({ data, color = 'blue' }) {
   const points = data
     .map((v, i) => `${(i / (data.length - 1)) * 100},${100 - (v / max) * 100}`)
     .join(' ')
-
   return (
     <svg className="sparkline" viewBox="0 0 100 30" preserveAspectRatio="none">
       <polyline
@@ -36,7 +46,7 @@ function Sparkline({ data, color = 'blue' }) {
   )
 }
 
-export default function SystemDiagnostics() {
+export default function SystemDiagnostics({ onThreatChange }) {
   const [cpu, setCpu] = useState(34.2)
   const [ram, setRam] = useState(61.8)
   const [net, setNet] = useState(12.4)
@@ -44,6 +54,10 @@ export default function SystemDiagnostics() {
   const [uptime, setUptime] = useState({ days: 847, hours: 12, mins: 34, secs: 0 })
   const [cpuHistory, setCpuHistory] = useState(Array(20).fill(30))
   const [ramHistory, setRamHistory] = useState(Array(20).fill(60))
+  const [threatIndex, setThreatIndex] = useState(0)
+  const [threatActivity, setThreatActivity] = useState(12)
+
+  const threat = THREAT_LEVELS[threatIndex]
 
   useEffect(() => {
     const tick = setInterval(() => {
@@ -70,6 +84,24 @@ export default function SystemDiagnostics() {
     }, 1000)
     return () => clearInterval(tick)
   }, [])
+
+  // Threat escalation logic
+  useEffect(() => {
+    const threatTick = setInterval(() => {
+      setThreatActivity(v => {
+        const next = Math.max(0, Math.min(100, v + (Math.random() - 0.45) * 15))
+        const newIndex = next < 25 ? 0 : next < 50 ? 1 : next < 75 ? 2 : 3
+        setThreatIndex(prev => {
+          if (newIndex !== prev && onThreatChange) {
+            onThreatChange(THREAT_LEVELS[newIndex])
+          }
+          return newIndex
+        })
+        return next
+      })
+    }, 4000)
+    return () => clearInterval(threatTick)
+  }, [onThreatChange])
 
   const pad = (n) => String(n).padStart(2, '0')
 
@@ -115,6 +147,30 @@ export default function SystemDiagnostics() {
           <span className="uptime-sep">:</span>
           <span className="uptime-num">{pad(uptime.secs)}</span>
           <span className="uptime-unit">S</span>
+        </div>
+      </div>
+
+      {/* Decepticon Threat Assessment */}
+      <div className="diag-section threat-section" style={{ borderColor: threat.color }}>
+        <div className="diag-header" style={{ color: threat.color }}>DECEPTICON THREAT ASSESSMENT</div>
+        <div className="threat-level-display" style={{ borderColor: threat.color, background: threat.bgColor }}>
+          <div className="threat-level-label" style={{ color: threat.color }}>
+            {threatIndex === 3 && <span className="threat-blink">⚠ </span>}
+            {threat.level}
+          </div>
+          <div className="threat-bar-track">
+            <div
+              className="threat-bar-fill"
+              style={{
+                width: `${threatActivity}%`,
+                background: threat.color,
+                boxShadow: `0 0 8px ${threat.color}`,
+              }}
+            />
+          </div>
+          <div className="threat-message" style={{ color: threat.color }}>
+            {THREAT_MESSAGES[threat.level]}
+          </div>
         </div>
       </div>
 
